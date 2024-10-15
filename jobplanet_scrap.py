@@ -1,3 +1,13 @@
+# **공고제목 - title**
+# **회사이름 - company_name**
+# **디테일 페이지로 가는 주소 - detail_url **
+# **마감일 - end_date**
+# ** 참고한 플랫폼 이름 - platform_name**
+# ** 카테고리 - category_name**
+# ** 기술 스택 - stack **
+# ** 지역  - region **
+# ** 신입/경력 - career **
+
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.service import Service
@@ -14,34 +24,53 @@ def scrape_additional_info(url):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     driver.get(url)
     time.sleep(3)  # 페이지 로딩 대기
-
+    
     # BeautifulSoup으로 페이지 파싱
     html = driver.page_source
     soup = BeautifulSoup(html, "html.parser")
 
-    # 기술 스택 추출
-    stack_elements = soup.find_all("dd","recruitment-summary__dd")
-    stack = [el.get_text(strip=True) for el in stack_elements if "기술" in el.get_text(strip=True)]
+    # 마감일 추출 (end_date)
+    end_date_element = soup.find("span", class_="recruitment-summary__end")
+    end_date = None
+    if end_date_element:
+        end_date = end_date_element.get_text(strip=True)
     
-    # 경력 추출 (경력 정보가 제대로 선택되도록 개선)
+    # 경력 추출 (career)
+    career_element = None
+    for dt in soup.find_all("dt", class_="recruitment-summary__dt"):
+        if "경력" in dt.get_text(strip=True):
+            career_element = dt.find_next_sibling("dd")
+            break
     career = None
-    career_element = soup.find("dd", "recruitment-summary__dd")
-    if career_element and "년" in career_element.get_text(strip=True):
+    if career_element:
         career = career_element.get_text(strip=True)
 
-    # 지역 추출 (올바른 요소에서 지역 정보 추출)
+    # 지역 추출 (region)
+    region_element = soup.find("span", class_="recruitment-summary__location")
     region = None
-    region_element = soup.find("span", "recruitment-summary__location")
     if region_element:
         region = region_element.get_text(strip=True)
+
+    # 기술 스택 추출 (stack)
+    stack_element = None
+    for dt in soup.find_all("dt", class_="recruitment-summary__dt"):
+        if "스킬" in dt.get_text(strip=True):
+            stack_element = dt.find_next_sibling("dd")
+            break
+    stack = []
+    if stack_element:
+        stack = [tech.strip() for tech in stack_element.get_text(strip=True).split(",")]
 
     driver.quit()
 
     return {
-        "stack": stack,
+        "end_date": end_date,
         "career": career,
-        "region": region
+        "region": region,
+        "stack": stack
     }
+
+
 
 ##### 마우스 이벤트 시작 #####
 
@@ -89,7 +118,7 @@ time.sleep(10)
 
 # 스크롤을 일정 횟수만큼 수행 (예: 5번)
 scroll_pause_time = 1
-scroll_limit = 5
+scroll_limit = 1
 
 for _ in range(scroll_limit):
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -126,9 +155,6 @@ def process_job(job, link):
     # 링크 (a 태그에서 href 속성 추출)
     job_data["detail_url"] = link.get("href")
 
-    # 마감일 (임의로 상시 채용으로 설정)
-    job_data["end_date"] = "상시 채용"
-
     # 플랫폼 이름
     job_data["platform_name"] = "Jobplanet"
 
@@ -137,11 +163,12 @@ def process_job(job, link):
     job_data["stack"] = additional_info["stack"]
     job_data["career"] = additional_info["career"]
     job_data["region"] = additional_info["region"]
+    job_data["end_date"] = additional_info["end_date"]
 
     return job_data
 
-# 스레드 풀을 사용하여 병렬 처리
-with ThreadPoolExecutor(max_workers=10) as executor:
+# 스레드 풀을 사용하여 병렬 처리 (성능향상...)
+with ThreadPoolExecutor(max_workers=7) as executor:
     futures = [executor.submit(process_job, job, link) for job, link in zip(job_elements, links)]
     for future in as_completed(futures):
         jobs_data.append(future.result())
