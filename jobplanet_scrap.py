@@ -1,9 +1,3 @@
-# **공고제목 - title**
-# **회사이름 - company_name**
-# **디테일 페이지로 가는 주소 - detail_url **
-# **마감일 - end_date**
-# ** 참고한 플랫폼 이름 - platform_name**
-
 from selenium import webdriver
 from selenium.webdriver import ActionChains
 from selenium.webdriver.chrome.service import Service
@@ -13,8 +7,41 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
 from bs4 import BeautifulSoup
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+# 추가 정보를 스크래핑하는 함수
+def scrape_additional_info(url):
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    driver.get(url)
+    time.sleep(3)  # 페이지 로딩 대기
+    
+    # BeautifulSoup으로 페이지 파싱
+    html = driver.page_source
+    soup = BeautifulSoup(html, "html.parser")
 
+    # 기술 스택 추출
+    stack_elements = soup.find_all("dd", class_="recruitment-summary__dd")
+    stack = [el.get_text(strip=True) for el in stack_elements]
+    
+    # 경력 추출
+    career = None
+    career_element = soup.find("dd", class_="recruitment-summary__dd")
+    if career_element:
+        career = career_element.get_text(strip=True)
+
+    # 지역 추출
+    region = None
+    region_element = soup.find("span", class_="recruitment-summary__location")
+    if region_element:
+        region = region_element.get_text(strip=True)
+
+    driver.quit()
+
+    return {
+        "stack": stack,
+        "career": career,
+        "region": region
+    }
 
 ##### 마우스 이벤트 시작 #####
 
@@ -41,9 +68,9 @@ data_button = WebDriverWait(driver, 5).until(
 )
 ActionChains(driver).click(data_button).perform()
 
-# 데이터 엔지니어 체크박스 버튼 클릭
+# 데이터 전체 버튼 클릭
 engineer_button = WebDriverWait(driver, 5).until(
-    EC.element_to_be_clickable((By.XPATH, "//span[text()='데이터 엔지니어']"))
+    EC.element_to_be_clickable((By.XPATH, "//span[text()='데이터 전체']"))
 )
 ActionChains(driver).click(engineer_button).perform()
 
@@ -62,7 +89,7 @@ time.sleep(10)
 
 # 스크롤을 일정 횟수만큼 수행 (예: 5번)
 scroll_pause_time = 1
-scroll_limit = 5
+scroll_limit = 2
 
 for _ in range(scroll_limit):
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -81,8 +108,8 @@ job_elements = soup.find_all("div", "group mt-[16px] group-[.small]:mt-[14px] me
 # 3. 결과를 저장할 리스트
 jobs_data = []
 
-# 4. 링크와 공고 정보를 함께 출력
-for job, link in zip(job_elements, links):
+# 4. 멀티스레딩으로 각 공고의 추가 정보를 병렬로 스크래핑
+def process_job(job, link):
     # 각 공고 정보를 저장할 딕셔너리
     job_data = {}
     
@@ -110,8 +137,19 @@ for job, link in zip(job_elements, links):
     # 플랫폼 이름
     job_data["platform_name"] = "Jobplanet"
 
-    # 저장된 공고 데이터를 리스트에 추가
-    jobs_data.append(job_data)
+    # 추가 정보를 병렬로 가져오기
+    additional_info = scrape_additional_info(job_data["detail_url"])
+    job_data["stack"] = additional_info["stack"]
+    job_data["career"] = additional_info["career"]
+    job_data["region"] = additional_info["region"]
+
+    return job_data
+
+# 스레드 풀을 사용하여 병렬 처리
+with ThreadPoolExecutor(max_workers=5) as executor:
+    futures = [executor.submit(process_job, job, link) for job, link in zip(job_elements, links)]
+    for future in as_completed(futures):
+        jobs_data.append(future.result())
 
 # 결과 출력 (예시)
 for job in jobs_data:
