@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Job Listings</title>
+</head>
+<body>
+    <h1>Job Listings</h1>
+    <ul>
+        {% for job in jobs %}
+        <li>
+            <h2>{{ job.title }}</h2>
+            <p>회사: {{ job.company_name }}</p>
+            <p>기술 스택: {{ job.skills }}</p>
+            <p>마감일: {{ job.end_date }}</p>
+            <p><a href="{{ job.detail_url }}">{{ job.detail_url }}</a></p>
+            <p>플랫폼: {{ job.platform_name }}</p>
+        </li>
+        <hr>
+        {% endfor %}
+    </ul>
+</body>
+</html>
