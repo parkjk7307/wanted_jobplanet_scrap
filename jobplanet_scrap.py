@@ -78,35 +78,44 @@ links = soup.find_all("a", "group z-0 block medium", title="페이지 이동")
 # 2. 공고 정보 추출
 job_elements = soup.find_all("div", "group mt-[16px] group-[.small]:mt-[14px] medium")
 
-# 3. 링크와 공고 정보를 함께 출력
-for job, link in zip(job_elements, links): # 코드를 끼워 맞춘 기분입니다.# 코드를 끼워 맞춘 기분입니다.# 코드를 끼워 맞춘 기분입니다.# 코드를 끼워 맞춘 기분입니다.
+# 3. 결과를 저장할 리스트
+jobs_data = []
+
+# 4. 링크와 공고 정보를 함께 출력
+for job, link in zip(job_elements, links):
+    # 각 공고 정보를 저장할 딕셔너리
+    job_data = {}
+    
     # 제목 (h2 태그 사용)
     title = job.find("h2", "line-clamp-2 break-all text-h7 text-gray-800 group-[.small]:text-h8")
     if title:
-        print("제목:", title.get_text(strip=True))
+        job_data["title"] = title.get_text(strip=True)
 
     # 회사명 (em 태그 사용)
     company_name = job.find("em", "inline-block w-full truncate text-body2 font-medium text-gray-800")
     if company_name:
-        print("회사명:", company_name.get_text(strip=True))
+        job_data["company_name"] = company_name.get_text(strip=True)
 
     # 기술 스택 (span 태그 사용)
     skills = job.find("span", "mt-[6px] inline-block w-full truncate text-small1 text-gray-500")
     if skills:
-        print("기술 스택:", skills.get_text(strip=True))
+        job_data["skills"] = skills.get_text(strip=True)
 
     # 링크 (a 태그에서 href 속성 추출)
-    print("링크:", link.get("href"))
+    job_data["detail_url"] = link.get("href")
 
-# 코드를 끼워 맞춘 기분입니다.# 코드를 끼워 맞춘 기분입니다.# 코드를 끼워 맞춘 기분입니다.# 코드를 끼워 맞춘 기분입니다.# 코드를 끼워 맞춘 기분입니다.
-    end_date = "상시 채용" 
-    print("마감일:", end_date)
+    # 마감일 (임의로 상시 채용으로 설정)
+    job_data["end_date"] = "상시 채용"
 
-    platform_name = "Jobplanet"
-    print("참고한 플랫폼 이름:", platform_name)
+    # 플랫폼 이름
+    job_data["platform_name"] = "Jobplanet"
 
-    print("-" * 50)  # 구분선 출력
+    # 저장된 공고 데이터를 리스트에 추가
+    jobs_data.append(job_data)
 
+# 결과 출력 (예시)
+for job in jobs_data:
+    print(job)
 
 # 5. 브라우저 종료
 driver.quit()
