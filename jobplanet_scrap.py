@@ -14,24 +14,24 @@ def scrape_additional_info(url):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     driver.get(url)
     time.sleep(3)  # 페이지 로딩 대기
-    
+
     # BeautifulSoup으로 페이지 파싱
     html = driver.page_source
     soup = BeautifulSoup(html, "html.parser")
 
     # 기술 스택 추출
-    stack_elements = soup.find_all("dd", class_="recruitment-summary__dd")
-    stack = [el.get_text(strip=True) for el in stack_elements]
+    stack_elements = soup.find_all("dd","recruitment-summary__dd")
+    stack = [el.get_text(strip=True) for el in stack_elements if "기술" in el.get_text(strip=True)]
     
-    # 경력 추출
+    # 경력 추출 (경력 정보가 제대로 선택되도록 개선)
     career = None
-    career_element = soup.find("dd", class_="recruitment-summary__dd")
-    if career_element:
+    career_element = soup.find("dd", "recruitment-summary__dd")
+    if career_element and "년" in career_element.get_text(strip=True):
         career = career_element.get_text(strip=True)
 
-    # 지역 추출
+    # 지역 추출 (올바른 요소에서 지역 정보 추출)
     region = None
-    region_element = soup.find("span", class_="recruitment-summary__location")
+    region_element = soup.find("span", "recruitment-summary__location")
     if region_element:
         region = region_element.get_text(strip=True)
 
@@ -89,7 +89,7 @@ time.sleep(10)
 
 # 스크롤을 일정 횟수만큼 수행 (예: 5번)
 scroll_pause_time = 1
-scroll_limit = 2
+scroll_limit = 5
 
 for _ in range(scroll_limit):
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -123,11 +123,6 @@ def process_job(job, link):
     if company_name:
         job_data["company_name"] = company_name.get_text(strip=True)
 
-    # 기술 스택 (span 태그 사용)
-    skills = job.find("span", "mt-[6px] inline-block w-full truncate text-small1 text-gray-500")
-    if skills:
-        job_data["skills"] = skills.get_text(strip=True)
-
     # 링크 (a 태그에서 href 속성 추출)
     job_data["detail_url"] = link.get("href")
 
@@ -145,8 +140,8 @@ def process_job(job, link):
 
     return job_data
 
-# 스레드 풀을 사용하여 병렬 처리 (성능향상...)
-with ThreadPoolExecutor(max_workers=5) as executor:
+# 스레드 풀을 사용하여 병렬 처리
+with ThreadPoolExecutor(max_workers=10) as executor:
     futures = [executor.submit(process_job, job, link) for job, link in zip(job_elements, links)]
     for future in as_completed(futures):
         jobs_data.append(future.result())
