@@ -145,7 +145,7 @@ def process_job(job, link):
 
     return job_data
 
-# 스레드 풀을 사용하여 병렬 처리
+# 스레드 풀을 사용하여 병렬 처리 (성능향상...)
 with ThreadPoolExecutor(max_workers=5) as executor:
     futures = [executor.submit(process_job, job, link) for job, link in zip(job_elements, links)]
     for future in as_completed(futures):
