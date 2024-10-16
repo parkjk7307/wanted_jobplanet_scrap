@@ -16,8 +16,18 @@ from selenium.webdriver.common.by import By
 from bs4 import BeautifulSoup
 import time
 
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from selenium.webdriver.common.by import By
+from bs4 import BeautifulSoup
+import time
+
 # 추가 정보를 스크래핑하는 함수
-def scrape_additional_info(driver, url):
+def scrape_additional_info(url):
+    # 각 스레드에서 별도의 driver 인스턴스를 생성
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     try:
         driver.get(url)
         time.sleep(3)  # 페이지 로딩 대기
@@ -58,11 +68,12 @@ def scrape_additional_info(driver, url):
             "region": "근무 지역 정보 없음",
             "stack": ["기술 스택 없음"]
         }
-
+    finally:
+        driver.quit()
 
 ##### 스크랩 시작 #####
 
-# 웹 드라이버 설정
+# 웹 드라이버 설정 (메인 페이지에서 데이터 가져오기)
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
 driver.get("https://www.wanted.co.kr/search?query=%EB%8D%B0%EC%9D%B4%ED%84%B0&tab=position")
 driver.implicitly_wait(5)
@@ -72,7 +83,7 @@ time.sleep(5)
 
 # 스크롤을 일정 횟수만큼 수행 (예: 5번)
 scroll_pause_time = 1
-scroll_limit = 10  # 스크롤 한계 설정
+scroll_limit = 20  # 스크롤 한계 설정
 
 for _ in range(scroll_limit):
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
@@ -87,7 +98,6 @@ job_cards = soup.find_all("div", class_="JobCard_container__REty8")
 
 # 결과를 저장할 리스트
 jobs_data = []
-
 
 # 스크랩할 각 공고를 처리하는 함수
 def process_job(job_card):
@@ -114,7 +124,7 @@ def process_job(job_card):
     }
 
     # 상세 페이지의 추가 정보를 병렬로 가져오기
-    additional_info = scrape_additional_info(driver, job_data["detail_url"])
+    additional_info = scrape_additional_info(job_data["detail_url"])
     job_data.update(additional_info)
 
     return job_data
@@ -129,6 +139,7 @@ with ThreadPoolExecutor(max_workers=7) as executor:
 for job in jobs_data:
     print(job)
 
-# 브라우저 종료
+# 메인 페이지의 드라이버 종료
 driver.quit()
+
 

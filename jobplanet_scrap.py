@@ -118,7 +118,7 @@ time.sleep(10)
 
 # 스크롤을 일정 횟수만큼 수행 (예: 5번)
 scroll_pause_time = 1
-scroll_limit = 1
+scroll_limit = 10
 
 for _ in range(scroll_limit):
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
